@@ -3,27 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>عالم حازم المفتوح - Multiplayer</title>
+    <title>عالم حازم المفتوح - نسخة الموبايل</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #001b33; font-family: Arial, sans-serif; }
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        body { margin: 0; overflow: hidden; background-color: #001b33; touch-action: none; }
+        canvas { display: block; }
     </style>
 </head>
 <body>
 <script>
-    // روابط الأصول (شفافة وواقعية)
+    // روابط الصور الشفافة
     const ASSETS = {
         player: 'https://raw.githubusercontent.com/Al-Ameen-Developer/Fish-Assets/main/real_fish_transparent.png',
         food: 'https://cdn-icons-png.flaticon.com/512/2271/2271068.png',
-        enemy: 'https://cdn-icons-png.flaticon.com/512/2970/2970034.png', // سمكة أصحابك
-        shark: 'https://cdn-icons-png.flaticon.com/512/1994/1994351.png' // القرش المفترس
+        enemy: 'https://cdn-icons-png.flaticon.com/512/2970/2970034.png',
+        shark: 'https://cdn-icons-png.flaticon.com/512/1994/1994351.png'
     };
 
-    const WORLD_SIZE = 5000;
-    let player, foods, enemies, shark;
-    let score = 0, level = 1;
-    let playerName = "حازم"; // سيتم تغييره حسب الداخل
+    const WORLD_SIZE = 4000;
+    let player, foods, score = 0, level = 1;
+    let playerName = "حازم";
 
     class MainScene extends Phaser.Scene {
         constructor() { super('MainScene'); }
@@ -31,7 +30,7 @@
         preload() {
             this.load.image('fish', ASSETS.player);
             this.load.image('food', ASSETS.food);
-            this.load.image('enemyFish', ASSETS.enemy);
+            this.load.image('enemy', ASSETS.enemy);
             this.load.image('shark', ASSETS.shark);
         }
 
@@ -40,107 +39,85 @@
             this.cameras.main.setBounds(0, 0, WORLD_SIZE, WORLD_SIZE);
             this.physics.world.setBounds(0, 0, WORLD_SIZE, WORLD_SIZE);
 
-            // 2. إنشاء اللاعب (حازم)
+            // 2. اللاعب (حازم) - حجم أصغر للموبايل
             player = this.physics.add.sprite(WORLD_SIZE/2, WORLD_SIZE/2, 'fish');
-            player.setScale(0.15);
+            player.setScale(0.12); 
             player.setCollideWorldBounds(true);
             
-            // إضافة نص الاسم والمستوى فوق السمكة
-            this.playerLabel = this.add.text(0, 0, `${playerName} [Lv.${level}]`, { fontSize: '16px', fill: '#fff', backgroundColor: '#00000088' });
-            this.playerLabel.setOrigin(0.5, 2.5);
+            // الاسم فوق السمكة (خط أصغر للموبايل)
+            this.playerLabel = this.add.text(0, 0, `${playerName} [Lv.${level}]`, { 
+                fontSize: '14px', fill: '#fff', backgroundColor: '#00000066', padding: {x:4, y:2} 
+            }).setOrigin(0.5, 2.8);
 
-            // 3. الكاميرا تتبع اللاعب
             this.cameras.main.startFollow(player, true, 0.1, 0.1);
 
-            // 4. نظام الطعام واللاعبين الآخرين (محاكاة الأونلاين)
+            // 3. الطعام والقرش
             foods = this.physics.add.group();
-            for(let i=0; i<150; i++) this.spawnFood();
+            for(let i=0; i<100; i++) this.spawnFood();
 
-            enemies = this.physics.add.group();
-            let names = ["أحمد", "محمد", "ياسين", "عمر"];
-            names.forEach(name => this.spawnEnemy(name));
-
-            // 5. القرش المفترس
-            shark = this.physics.add.sprite(500, 500, 'shark').setScale(0.4);
-            this.physics.add.overlap(player, shark, () => { if(level < 5) alert("أكلك القرش! حاول تكبر الأول"); });
-
-            // 6. التصادمات
+            // 4. التصادمات
             this.physics.add.overlap(player, foods, this.eatFood, null, this);
 
-            // 7. واجهة المستخدم (UI) والخريطة الصغيرة
-            this.createUI();
-            this.createMiniMap();
+            // 5. واجهة المستخدم المخصصة للموبايل
+            this.createMobileUI();
         }
 
         update() {
-            // حركة اللاعب باللمس
+            // حركة ذكية للموبايل: السمكة تتحرك في اتجاه اللمس
             if (this.input.activePointer.isDown) {
-                this.physics.moveToObject(player, this.input.activePointer.worldX, this.input.activePointer.worldY, 250);
+                this.physics.moveToObject(player, this.input.activePointer.worldX, this.input.activePointer.worldY, 200);
                 let angle = Phaser.Math.Angle.Between(player.x, player.y, this.input.activePointer.worldX, this.input.activePointer.worldY);
                 player.setRotation(angle);
             } else {
                 player.setVelocity(0);
             }
 
-            // تحديث مكان الاسم فوق السمكة
-            this.playerLabel.x = player.x;
-            this.playerLabel.y = player.y;
-
-            // تحديث النقاط على الخريطة الصغيرة
+            this.playerLabel.setPosition(player.x, player.y);
             this.updateMiniMap();
         }
 
         spawnFood() {
-            let f = foods.create(Phaser.Math.Between(50, WORLD_SIZE-50), Phaser.Math.Between(50, WORLD_SIZE-50), 'food');
-            f.setScale(0.04);
-        }
-
-        spawnEnemy(name) {
-            let e = enemies.create(Phaser.Math.Between(100, WORLD_SIZE-100), Phaser.Math.Between(100, WORLD_SIZE-100), 'enemyFish');
-            e.setScale(0.12);
-            let label = this.add.text(e.x, e.y, `${name} [Lv.1]`, { fontSize: '12px', fill: '#ff0' });
-            e.setData('label', label);
+            let f = foods.create(Phaser.Math.Between(100, WORLD_SIZE-100), Phaser.Math.Between(100, WORLD_SIZE-100), 'food');
+            f.setScale(0.03);
         }
 
         eatFood(player, food) {
             food.destroy();
             score += 10;
-            if(score % 100 === 0) { 
+            if(score % 50 === 0) { 
                 level++; 
-                player.setScale(player.scaleX + 0.02);
+                player.setScale(player.scaleX + 0.005);
                 this.playerLabel.setText(`${playerName} [Lv.${level}]`);
             }
-            this.scoreText.setText(`النقاط: ${score} | المستوى: ${level}`);
+            this.scoreText.setText(`🏆 ${score} | Lv.${level}`);
             this.spawnFood();
         }
 
-        createUI() {
-            this.scoreText = this.add.text(20, 20, 'النقاط: 0 | المستوى: 1', { fontSize: '20px', fill: '#fff' }).setScrollFactor(0);
-            this.add.text(window.innerWidth - 150, 20, 'المتصلين: 5', { fontSize: '18px', fill: '#0f0' }).setScrollFactor(0);
-        }
+        createMobileUI() {
+            // النص العلوي (النقاط) - مكان بعيد عن أصابع اللاعب
+            this.scoreText = this.add.text(10, 10, `🏆 0 | Lv.1`, { 
+                fontSize: '18px', fill: '#fff', fontWeight: 'bold' 
+            }).setScrollFactor(0);
 
-        createMiniMap() {
-            // إنشاء مستطيل الخريطة الصغيرة فوق على الشمال
-            this.mmGroup = this.add.container(20, 60).setScrollFactor(0);
-            let bg = this.add.graphics();
-            bg.fillStyle(0x000000, 0.5);
-            bg.fillRect(0, 0, 150, 150);
-            bg.lineStyle(2, 0xffffff, 1);
-            bg.strokeRect(0, 0, 150, 150);
-            this.mmGroup.add(bg);
+            // الخريطة الصغيرة - حجم أصغر (80 بكسل) في الزاوية
+            this.mmContainer = this.add.container(window.innerWidth - 90, 10).setScrollFactor(0);
+            let mmBg = this.add.graphics();
+            mmBg.fillStyle(0x000000, 0.4);
+            mmBg.fillRoundedRect(0, 0, 80, 80, 10);
+            mmBg.lineStyle(1, 0xffffff, 0.5);
+            mmBg.strokeRoundedRect(0, 0, 80, 80, 10);
+            this.mmContainer.add(mmBg);
 
-            // نقطة اللاعب على الخريطة
-            this.playerDot = this.add.graphics();
-            this.playerDot.fillStyle(0xff0000, 1);
-            this.playerDot.fillCircle(0, 0, 4);
-            this.mmGroup.add(this.playerDot);
+            this.mmDot = this.add.graphics();
+            this.mmDot.fillStyle(0xff0000, 1);
+            this.mmDot.fillCircle(0, 0, 3);
+            this.mmContainer.add(this.mmDot);
         }
 
         updateMiniMap() {
-            // تحويل إحداثيات العالم إلى إحداثيات الخريطة (150 بكسل)
-            let mx = (player.x / WORLD_SIZE) * 150;
-            let my = (player.y / WORLD_SIZE) * 150;
-            this.playerDot.setPosition(mx, my);
+            let mx = (player.x / WORLD_SIZE) * 80;
+            let my = (player.y / WORLD_SIZE) * 80;
+            this.mmDot.setPosition(mx, my);
         }
     }
 
