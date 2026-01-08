@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>لعبة سمكة حازم</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #001b33; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<script>
+    // الرابط الذي أرسلته يا حازم
+    const FISH_URL = 'https://raw.githubusercontent.com/hazemhamdy1986-blip/hazem/refs/heads/main/IMG-20260108-WA0018.jpg';
+
+    const config = {
+        type: Phaser.AUTO,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        physics: {
+            default: 'arcade',
+            arcade: { gravity: { y: 0 } }
+        },
+        scene: { preload: preload, create: create, update: update }
+    };
+
+    const game = new Phaser.Game(config);
+    let player;
+
+    function preload() {
+        // تحميل صورتك الواقعية
+        this.load.image('playerFish', FISH_URL);
+    }
+
+    function create() {
+        // إنشاء السمكة في منتصف الشاشة
+        player = this.physics.add.sprite(window.innerWidth / 2, window.innerHeight / 2, 'playerFish');
+        
+        // تعديل الحجم لتناسب شاشة الموبايل
+        player.setScale(0.2); 
+        
+        // جعل الكاميرا تتبع السمكة في عالم مفتوح بسيط
+        this.cameras.main.setBackgroundColor('#004e7a');
+    }
+
+    function update() {
+        // التحكم باللمس (مناسب جداً لتليجرام)
+        if (this.input.activePointer.isDown) {
+            // التحرك نحو مكان اللمس
+            this.physics.moveToObject(player, this.input.activePointer, 250);
+            
+            // تدوير السمكة لتبدو كأنها تسبح في اتجاه إصبعك
+            let angle = Phaser.Math.Angle.Between(player.x, player.y, this.input.activePointer.x, this.input.activePointer.y);
+            player.setRotation(angle);
+        } else {
+            // التوقف عند رفع الإصبع
+            player.setVelocity(0);
+        }
+    }
+</script>
+</body>
+</html>
